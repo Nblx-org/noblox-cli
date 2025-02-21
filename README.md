@@ -1,3 +1,29 @@
+# notes
+
+Here's some basic workflow
+
+noblox -> nbx
+
+apt-file search bin/nbx reveals nothing - nbx should have no collisions
+
+
+```shell
+$ cd mycode
+$ noblox init
+   created orange-dolphin/
+   added git hooks
+   no apikey found, generating...
+   your api key 44168467-e4cd-4ca6-87ee-25fd052f573a has been added
+
+then I do something like this
+$ cat OPENAI_KEY=123abc > .env
+$ nvim ... work work work ...
+$ git commit -am "work for the day"
+   noblox detected .env changes, encrypting and syncing
+$ git push
+```
+
+
 ```
 ┌──┬──┐                 __    __          
 │  │  │    ____  ____  / /_  / /___  _  __

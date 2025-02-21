@@ -11,7 +11,7 @@ requires-python = ">=3.8"
 license = "MIT"
 keywords = ["utility", "tools"]
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "Chris McKenzie", email = "hello@noblox.pro" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -29,16 +29,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "black>=22.0.0",
-    "isort>=5.0.0",
-    "mypy>=1.0.0",
+    "requests",
+    "rich"
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/noblox"
-Repository = "https://github.com/yourusername/noblox.git"
+Homepage = "https://github.com/noblox.pro/noblox"
+Repository = "https://github.com/noblox.pro/noblox.git"
 Documentation = "https://noblox.readthedocs.io/"
 "Bug Tracker" = "https://github.com/yourusername/noblox/issues"
 

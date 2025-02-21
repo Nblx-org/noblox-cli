@@ -143,4 +143,91 @@ def login_api_key(api_key: str, console: Console):
     except requests.exceptions.RequestException as e:
         console.print(f"[red]Login failed: {e}[/]")
     except json.JSONDecodeError:
-        console.print("[red]Failed to decode JSON response.[/]")
+        console.print("[red]Failed to decode JSON response.[/]")import os
+import base64
+import subprocess
+from cryptography.fernet import Fernet
+
+NOBLOX_DIR = ".noblox"
+SECRET_FILE = f"{NOBLOX_DIR}/secret.key"
+ENCRYPTED_ENV = f"{NOBLOX_DIR}/env.enc"
+
+
+def generate_key():
+    key = Fernet.generate_key()
+    with open(SECRET_FILE, "wb") as key_file:
+        key_file.write(key)
+    return key
+
+
+def load_key():
+    if os.path.exists(SECRET_FILE):
+        with open(SECRET_FILE, "rb") as key_file:
+            return key_file.read()
+    return generate_key()
+
+
+def encrypt_env():
+    if not os.path.exists(".env"):
+        print("No .env file found.")
+        return
+    
+    key = load_key()
+    cipher = Fernet(key)
+    
+    with open(".env", "rb") as env_file:
+        encrypted_data = cipher.encrypt(env_file.read())
+    
+    with open(ENCRYPTED_ENV, "wb") as enc_file:
+        enc_file.write(encrypted_data)
+    
+    print(".env encrypted and stored in .noblox/env.enc")
+
+
+def decrypt_env():
+    if not os.path.exists(ENCRYPTED_ENV):
+        print("No encrypted .env found.")
+        return
+    
+    key = load_key()
+    cipher = Fernet(key)
+    
+    with open(ENCRYPTED_ENV, "rb") as enc_file:
+        decrypted_data = cipher.decrypt(enc_file.read())
+    
+    with open(".env", "wb") as env_file:
+        env_file.write(decrypted_data)
+    
+    print("Decrypted .env file restored.")
+
+
+def init_noblox():
+    if not os.path.exists(NOBLOX_DIR):
+        os.mkdir(NOBLOX_DIR)
+        with open(".gitignore", "a") as gitignore:
+            gitignore.write("\n.noblox/")
+        print("Noblox initialized. .noblox/ added to .gitignore.")
+    else:
+        print("Noblox already initialized.")
+
+
+def main():
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: noblox [init|encrypt|decrypt]")
+        return
+    
+    command = sys.argv[1]
+    if command == "init":
+        init_noblox()
+    elif command == "encrypt":
+        encrypt_env()
+    elif command == "decrypt":
+        decrypt_env()
+    else:
+        print("Unknown command.")
+
+
+if __name__ == "__main__":
+    main()
+

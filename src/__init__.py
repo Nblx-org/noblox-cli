@@ -7,22 +7,24 @@ import sys
 import time
 from typing import Optional
 
+import base64
+import subprocess
+from cryptography.fernet import Fernet
+
+from git import Repo, InvalidGitRepositoryError
+from git.exc import GitCommandError
+
+NOBLOX_DIR = ".nbx"
+SECRET_FILE = f"{NOBLOX_DIR}/secret.key"
+ENCRYPTED_ENV = f"{NOBLOX_DIR}/env.enc"
+
+
 try:
     from rich.console import Console
     from rich.progress import Progress
 except ImportError:
     print("Please install rich: pip install rich")
     sys.exit(1)
-
-def get_figlet_header(text: str) -> str:
-    try:
-        import subprocess
-        result = subprocess.run(['figlet', '-f', 'slant', text], capture_output=True, text=True, check=True)
-        return result.stdout
-    except FileNotFoundError:
-        return f"  {text}  "
-    except subprocess.CalledProcessError as e:
-        return f"Error generating figlet: {e}"
 
 def getenv(api_url: str, output_file: str, console: Console, progress: Optional[Progress] = None):
     try:
@@ -59,25 +61,30 @@ def getenv(api_url: str, output_file: str, console: Console, progress: Optional[
 if __name__ == '__main__':
     console = Console()
     grid = """
-┌──┬──┐                
-│  │  │
-├──┼──┤
-│  │  │
-└──┴──┘
+                     _     _           
+         _ __   ___ | |__ | | _____  __
+┌──┬### | '_ \ / _ \| '_ \| |/ _ \ \/ /
+├──┼### | | | | (_) | |_) | | (_) >  < 
+└──┴──┘ |_| |_|\___/|_.__/|_|\___/_/\_\
 """
-    grid_lines = grid.strip().split('\n')
-    header = get_figlet_header("noblox")
-    header_lines = header.strip().split('\n')
-    combined_lines = []
-    for i in range(max(len(grid_lines), len(header_lines))):
-        grid_line = grid_lines[i % len(grid_lines)]
-        header_line = header_lines[i] if i < len(header_lines) else ""
-        combined_lines.append(f"{grid_line} {header_line}")
-    combined_output = "\n".join(combined_lines)
-    console.print(f"[yellow]{combined_output}[/]")
+    console.print(f"[yellow]{grid}[/]")
 
     parser = argparse.ArgumentParser(description='noblox CLI tool.')
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # Git commands
+    log_parser = subparsers.add_parser('log', help='Git log')
+    init_parser = subparsers.add_parser('init', help='Git init')
+    pull_parser = subparsers.add_parser('pull', help='Git pull')
+    push_parser = subparsers.add_parser('push', help='Git push')
+    checkout_parser = subparsers.add_parser('checkout', help='Git checkout')
+
+    # Custom commands
+    reject_parser = subparsers.add_parser('reject', help='Reject an email')
+    reject_parser.add_argument('email', help='The email to reject')
+
+    invite_parser = subparsers.add_parser('invite', help='Invite a new team member')
+    invite_parser.add_argument('email', help='The email to invite')
 
     # getenv command
     getenv_parser = subparsers.add_parser('getenv', help='Fetch environment variables and populate .env file')
@@ -103,6 +110,21 @@ if __name__ == '__main__':
         api_url = "localhost:5000/respond"
         with Progress(transient=True) as progress:
             getenv(api_url, args.output, console, progress)
+    repo = Repo('.')
+    if args.command == 'log':
+        print(repo.git.log())
+    elif args.command == 'init':
+        Repo.init('.')
+    elif args.command == 'pull':
+        repo.remotes.origin.pull()
+    elif args.command == 'push':
+        repo.remotes.origin.push()
+    elif args.command == 'checkout':
+        repo.git.checkout()
+    elif args.command == 'reject':
+        print(f"Rejecting email: {args.email}")
+    elif args.command == 'invite':
+        print(f"Inviting email: {args.email}")
     elif args.command == 'request':
         request_api_keys(args.provider, console)
     elif args.command == 'update':
@@ -113,24 +135,6 @@ if __name__ == '__main__':
         login_api_key(args.api_key, console)
     else:
         parser.print_help()
-
-def request_api_keys(provider: str, console: Console):
-    """Requests API keys from a provider."""
-    console.print(f"[yellow]Requesting API keys from {provider}...[/]")
-    # TODO: Implement API key request logic
-    console.print("[red]Not yet implemented.[/]")
-
-def update_api_keys(console: Console):
-    """Checks for updated API keys."""
-    console.print("[yellow]Checking for updated API keys...[/]")
-    # TODO: Implement update logic
-    console.print("[red]Not yet implemented.[/]")
-
-def share_environment_variables(console: Console):
-    """Shares a restricted set of environment variables."""
-    console.print("[yellow]Sharing environment variables...[/]")
-    # TODO: Implement share logic
-    console.print("[red]Not yet implemented.[/]")
 
 def login_api_key(api_key: str, console: Console):
     """Logs in with the provided API key."""
@@ -144,13 +148,6 @@ def login_api_key(api_key: str, console: Console):
         console.print(f"[red]Login failed: {e}[/]")
     except json.JSONDecodeError:
         console.print("[red]Failed to decode JSON response.[/]")import os
-import base64
-import subprocess
-from cryptography.fernet import Fernet
-
-NOBLOX_DIR = ".noblox"
-SECRET_FILE = f"{NOBLOX_DIR}/secret.key"
-ENCRYPTED_ENV = f"{NOBLOX_DIR}/env.enc"
 
 
 def generate_key():
@@ -165,6 +162,60 @@ def load_key():
         with open(SECRET_FILE, "rb") as key_file:
             return key_file.read()
     return generate_key()
+
+def install_git_hooks():
+    """Installs git hooks."""
+    try:
+        repo = Repo(search_parent_directories=True)
+        hook_path = os.path.join(repo.git_dir, 'hooks', 'pre-commit')
+        with open(hook_path, 'w') as f:
+            f.write("#!/bin/sh\n")
+            f.write("# Add your pre-commit hook logic here\n")
+            f.write("echo 'Running pre-commit hook...'\n")
+            f.write("if [[ $1 == *.env ]]; then\n")
+            f.write("  echo 'Skipping .env file'\n")
+            f.write("else\n")
+            f.write("  # Example: Run linters or formatters\n")
+            f.write("  # black . || exit 1\n")
+            f.write("  # flake8 . || exit 1\n")
+            f.write("fi\n")
+        os.chmod(hook_path, 0o755)  # Make the hook executable
+        print("Git pre-commit hook installed.")
+    except InvalidGitRepositoryError:
+        print("Not a git repository.")
+    except Exception as e:
+        print(f"Error installing git hook: {e}")
+        print(f"Error installing git hook: {e}")
+
+
+def change_branch(branch_name: str):
+    """Changes to the specified branch."""
+    try:
+        repo = Repo(search_parent_directories=True)
+        repo.git.checkout(branch_name)
+        print(f"Switched to branch: {branch_name}")
+    except InvalidGitRepositoryError:
+        print("Not a git repository.")
+    except GitCommandError as e:
+        print(f"Error changing branch: {e}")
+    except Exception as e:
+        print(f"Error changing branch: {e}")
+
+
+def checkout_and_commit(file_path: str, commit_message: str):
+    """Checks out a file, adds it, and commits the changes."""
+    try:
+        repo = Repo(search_parent_directories=True)
+        repo.git.checkout(file_path)  # Checkout the file
+        repo.index.add([file_path])  # Add the file
+        repo.index.commit(commit_message)  # Commit the changes
+        print(f"Checked out, added, and committed changes to {file_path}")
+    except InvalidGitRepositoryError:
+        print("Not a git repository.")
+    except GitCommandError as e:
+        print(f"Error during checkout/commit: {e}")
+    except Exception as e:
+        print(f"Error during checkout/commit: {e}")
 
 
 def encrypt_env():
@@ -210,24 +261,14 @@ def init_noblox():
     else:
         print("Noblox already initialized.")
 
+"""
+🚀 This repo uses **nblx** to securely manage secrets. 🚀  
 
-def main():
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: noblox [init|encrypt|decrypt]")
-        return
-    
-    command = sys.argv[1]
-    if command == "init":
-        init_noblox()
-    elif command == "encrypt":
-        encrypt_env()
-    elif command == "decrypt":
-        decrypt_env()
-    else:
-        print("Unknown command.")
+You just tried to commit `XXX`, but **You Don't Need To Do That!**  
+Nblx automatically encrypts and tracks secrets for you.  
 
-
-if __name__ == "__main__":
-    main()
-
+📖 Learn why:  `nblx hello`  
+🔕 Silence this warning:  `nblx bye`  
+   (One-time override: `git commit --no-verify`)  
+   (Permanent removal: `nblx bye --forever`)  
+"""

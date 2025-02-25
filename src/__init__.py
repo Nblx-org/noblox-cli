@@ -5,26 +5,23 @@ import os
 import requests
 import sys
 import time
-from typing import Optional
-
 import base64
 import subprocess
 from cryptography.fernet import Fernet
+from typing import Optional
 
 from git import Repo, InvalidGitRepositoryError
 from git.exc import GitCommandError
+from dotenv import set_key
+from rich.console import Console
+from rich.progress import Progress
 
-NOBLOX_DIR = ".nbx"
+NOBLOX_DIR = ".nblx"
 SECRET_FILE = f"{NOBLOX_DIR}/secret.key"
 ENCRYPTED_ENV = f"{NOBLOX_DIR}/env.enc"
 
-
-try:
-    from rich.console import Console
-    from rich.progress import Progress
-except ImportError:
-    print("Please install rich: pip install rich")
-    sys.exit(1)
+_project = Repo('.')
+_nblx = Repo('.nblx')
 
 def getenv(api_url: str, output_file: str, console: Console, progress: Optional[Progress] = None):
     try:
@@ -44,9 +41,8 @@ def getenv(api_url: str, output_file: str, console: Console, progress: Optional[
 
         data = json.loads(response.text)
 
-        with open(output_file, 'w') as f:
-            for key, value in data.items():
-                f.write(f'{key}={value}\n')
+        for key, value in data.items():
+            set_key(output_file, key, value)
 
         console.print(f"[green]Successfully wrote environment variables to {output_file}[/]")
 
@@ -58,83 +54,6 @@ def getenv(api_url: str, output_file: str, console: Console, progress: Optional[
         console.print(f"[red]An unexpected error occurred: {e}[/]")
 
 
-if __name__ == '__main__':
-    console = Console()
-    grid = """
-                     _     _           
-         _ __   ___ | |__ | | _____  __
-┌──┬### | '_ \ / _ \| '_ \| |/ _ \ \/ /
-├──┼### | | | | (_) | |_) | | (_) >  < 
-└──┴──┘ |_| |_|\___/|_.__/|_|\___/_/\_\
-"""
-    console.print(f"[yellow]{grid}[/]")
-
-    parser = argparse.ArgumentParser(description='noblox CLI tool.')
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
-
-    # Git commands
-    log_parser = subparsers.add_parser('log', help='Git log')
-    init_parser = subparsers.add_parser('init', help='Git init')
-    pull_parser = subparsers.add_parser('pull', help='Git pull')
-    push_parser = subparsers.add_parser('push', help='Git push')
-    checkout_parser = subparsers.add_parser('checkout', help='Git checkout')
-
-    # Custom commands
-    reject_parser = subparsers.add_parser('reject', help='Reject an email')
-    reject_parser.add_argument('email', help='The email to reject')
-
-    invite_parser = subparsers.add_parser('invite', help='Invite a new team member')
-    invite_parser.add_argument('email', help='The email to invite')
-
-    # getenv command
-    getenv_parser = subparsers.add_parser('getenv', help='Fetch environment variables and populate .env file')
-    getenv_parser.add_argument('--output', default='.env', help='The output file name (default: .env).')
-
-    # request command
-    request_parser = subparsers.add_parser('request', help='Request API keys from fly.io or together.ai')
-    request_parser.add_argument('provider', choices=['fly.io', 'together.ai'], help='API key provider (fly.io or together.ai)')
-
-    # update command
-    update_parser = subparsers.add_parser('update', help='Check for updated API keys')
-
-    # share command
-    share_parser = subparsers.add_parser('share', help='Share a restricted set of environment variables')
-    
-    # login command
-    login_parser = subparsers.add_parser('login', help='Login with an API key')
-    login_parser.add_argument('api_key', help='Your API key')
-
-    args = parser.parse_args()
-
-    if args.command == 'getenv':
-        api_url = "localhost:5000/respond"
-        with Progress(transient=True) as progress:
-            getenv(api_url, args.output, console, progress)
-    repo = Repo('.')
-    if args.command == 'log':
-        print(repo.git.log())
-    elif args.command == 'init':
-        Repo.init('.')
-    elif args.command == 'pull':
-        repo.remotes.origin.pull()
-    elif args.command == 'push':
-        repo.remotes.origin.push()
-    elif args.command == 'checkout':
-        repo.git.checkout()
-    elif args.command == 'reject':
-        print(f"Rejecting email: {args.email}")
-    elif args.command == 'invite':
-        print(f"Inviting email: {args.email}")
-    elif args.command == 'request':
-        request_api_keys(args.provider, console)
-    elif args.command == 'update':
-        update_api_keys(console)
-    elif args.command == 'share':
-        share_environment_variables(console)
-    elif args.command == 'login':
-        login_api_key(args.api_key, console)
-    else:
-        parser.print_help()
 
 def login_api_key(api_key: str, console: Console):
     """Logs in with the provided API key."""
@@ -147,7 +66,8 @@ def login_api_key(api_key: str, console: Console):
     except requests.exceptions.RequestException as e:
         console.print(f"[red]Login failed: {e}[/]")
     except json.JSONDecodeError:
-        console.print("[red]Failed to decode JSON response.[/]")import os
+        console.print("[red]Failed to decode JSON response.[/]")
+        import os
 
 
 def generate_key():
@@ -253,13 +173,90 @@ def decrypt_env():
 
 
 def init_noblox():
+    global _nblx 
     if not os.path.exists(NOBLOX_DIR):
         os.mkdir(NOBLOX_DIR)
-        with open(".gitignore", "a") as gitignore:
-            gitignore.write("\n.noblox/")
+        _nblx = Repo(NOBLOX_DIR)
+        if not _project.ignored(NOBLOX_DIR):
+            with open('.gitignore', 'a') as gitignore:
+                gitignore.write(NOBLOX_DIR)
         print("Noblox initialized. .noblox/ added to .gitignore.")
     else:
         print("Noblox already initialized.")
+
+if __name__ == '__main__':
+    console = Console()
+    grid = """
+                     _     _           
+         _ __   ___ | |__ | | _____  __
+┌──┬### | '_ \ / _ \| '_ \| |/ _ \ \/ /
+├──┼### | | | | (_) | |_) | | (_) >  < 
+└──┴──┘ |_| |_|\___/|_.__/|_|\___/_/\_\
+"""
+    console.print(f"[yellow]{grid}[/]")
+
+    parser = argparse.ArgumentParser(description='noblox CLI tool.')
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # Git commands
+    log_parser = subparsers.add_parser('log', help='Git log')
+    init_parser = subparsers.add_parser('init', help='Git init')
+    pull_parser = subparsers.add_parser('pull', help='Git pull')
+    push_parser = subparsers.add_parser('push', help='Git push')
+    checkout_parser = subparsers.add_parser('checkout', help='Git checkout')
+
+    # Custom commands
+    reject_parser = subparsers.add_parser('reject', help='Reject an email')
+    reject_parser.add_argument('email', help='The email to reject')
+
+    invite_parser = subparsers.add_parser('invite', help='Invite a new team member')
+    invite_parser.add_argument('email', help='The email to invite')
+
+    # getenv command
+    getenv_parser = subparsers.add_parser('init', help='Fetch environment variables and populate .env file')
+    getenv_parser.add_argument('--output', default='.env', help='The output file name (default: .env).')
+
+    request_parser = subparsers.add_parser('request', help='Request API keys for cli utils')
+    update_parser = subparsers.add_parser('update', help='Check for updated secrets')
+
+    # share command
+    share_parser = subparsers.add_parser('share', help='Share a restricted set of environment variables')
+    
+    # login command
+    login_parser = subparsers.add_parser('login', help='Login with an API key')
+    login_parser.add_argument('api_key', help='Your API key')
+
+    args = parser.parse_args()
+
+    if args.command == 'init:
+        api_url = "localhost:5000/respond"
+        with Progress(transient=True) as progress:
+            getenv(api_url, args.output, console, progress)
+
+    if args.command == 'log':
+        print(_nblx.git.log())
+    elif args.command == 'init':
+        init_noblox()
+    elif args.command == 'pull':
+        _nblx.remotes.origin.pull()
+    elif args.command == 'push':
+        _nblx.remotes.origin.push()
+    elif args.command == 'checkout':
+        _nblx.git.checkout()
+    elif args.command == 'reject':
+        print(f"Rejecting email: {args.email}")
+    elif args.command == 'invite':
+        print(f"Inviting email: {args.email}")
+    elif args.command == 'request':
+        request_api_keys(args.provider, console)
+    elif args.command == 'update':
+        update_api_keys(console)
+    elif args.command == 'share':
+        share_environment_variables(console)
+    elif args.command == 'login':
+        login_api_key(args.api_key, console)
+    else:
+        parser.print_help()
 
 """
 🚀 This repo uses **nblx** to securely manage secrets. 🚀  

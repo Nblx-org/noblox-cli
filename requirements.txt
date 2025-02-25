@@ -1,2 +1,5 @@
 requests
 rich
+gitpython
+cryptography
+python-dotenv

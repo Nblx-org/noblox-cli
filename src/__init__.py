@@ -84,6 +84,17 @@ def load_key():
     return generate_key()
 
 def install_git_hooks():
+    """
+    🚀 This repo uses **nblx** to securely manage secrets. 🚀  
+
+    You just tried to commit `XXX`, but **You Don't Need To Do That!**  
+    Nblx automatically encrypts and tracks secrets for you.  
+
+    📖 Learn why:  `nblx hello`  
+    🔕 Silence this warning:  `nblx bye`  
+    (One-time override: `git commit --no-verify`)  
+    (Permanent removal: `nblx bye --forever`)  
+    """
     """Installs git hooks."""
     try:
         repo = Repo(search_parent_directories=True)
@@ -198,12 +209,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='noblox CLI tool.')
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
 
+    # Todo: things like api keys should maybe be in a chroot or something to keep their permissions isolated to the project
+    # I think maybe the direnv abstraction does this
     # Git commands
-    log_parser = subparsers.add_parser('log', help='Git log')
-    init_parser = subparsers.add_parser('init', help='Git init')
-    pull_parser = subparsers.add_parser('pull', help='Git pull')
-    push_parser = subparsers.add_parser('push', help='Git push')
-    checkout_parser = subparsers.add_parser('checkout', help='Git checkout')
+    log_parser = subparsers.add_parser('log', help='Log of previous changes and checkpoints')
+    init_parser = subparsers.add_parser('init', help=f'Create the {NOBLOX_DIR} and try to get permissions for the .env directory')
+    pull_parser = subparsers.add_parser('pull', help='Update permissions')
+    push_parser = subparsers.add_parser('push', help='Push (revertable) updates to permissions')
+    checkout_parser = subparsers.add_parser('checkout', help='Switch permissions between environments')
+    fork = subparsers.add_parser('fork', help='Clone the current permissions and (potentially) remove or add users')
 
     # Custom commands
     reject_parser = subparsers.add_parser('reject', help='Reject an email')
@@ -219,9 +233,6 @@ if __name__ == '__main__':
     request_parser = subparsers.add_parser('request', help='Request API keys for cli utils')
     update_parser = subparsers.add_parser('update', help='Check for updated secrets')
 
-    # share command
-    share_parser = subparsers.add_parser('share', help='Share a restricted set of environment variables')
-    
     # login command
     login_parser = subparsers.add_parser('login', help='Login with an API key')
     login_parser.add_argument('api_key', help='Your API key')
@@ -251,21 +262,7 @@ if __name__ == '__main__':
         request_api_keys(args.provider, console)
     elif args.command == 'update':
         update_api_keys(console)
-    elif args.command == 'share':
-        share_environment_variables(console)
     elif args.command == 'login':
         login_api_key(args.api_key, console)
     else:
         parser.print_help()
-
-"""
-🚀 This repo uses **nblx** to securely manage secrets. 🚀  
-
-You just tried to commit `XXX`, but **You Don't Need To Do That!**  
-Nblx automatically encrypts and tracks secrets for you.  
-
-📖 Learn why:  `nblx hello`  
-🔕 Silence this warning:  `nblx bye`  
-   (One-time override: `git commit --no-verify`)  
-   (Permanent removal: `nblx bye --forever`)  
-"""

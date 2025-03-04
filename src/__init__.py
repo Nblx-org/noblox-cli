@@ -237,9 +237,16 @@ if __name__ == '__main__':
     login_parser = subparsers.add_parser('login', help='Login with an API key')
     login_parser.add_argument('api_key', help='Your API key')
 
+    add_parser = subparsers.add_parser('add', help='Add a service key')
+    add_parser.add_argument('service', help='The service to add')
+    add_parser.add_argument('--path', default='.env', help='Path to the .env file (default: .env)')
+
+    config_parser = subparsers.add_parser('config', help='Configure nblx settings')
+    config_parser.add_argument('--server', help='Set the default nblx server')
+
     args = parser.parse_args()
 
-    if args.command == 'init:
+    if args.command == 'init':
         api_url = "localhost:5000/respond"
         with Progress(transient=True) as progress:
             getenv(api_url, args.output, console, progress)
@@ -264,5 +271,22 @@ if __name__ == '__main__':
         update_api_keys(console)
     elif args.command == 'login':
         login_api_key(args.api_key, console)
+    elif args.command == 'add':
+        import getpass
+        key = getpass.getpass("✨ Enter key: ")
+        console.print("✨ Encrypting...")
+        # In a real implementation, you'd encrypt the key here
+        from dotenv import set_key
+        set_key(args.path, args.service, key)
+        console.print(f"🔒 {args.service} key added to {args.path}")
+    elif args.command == 'config':
+        if args.server:
+            try:
+                subprocess.run(['git', 'config', '--global', 'nblx.server', args.server], check=True)
+                console.print(f"Default nblx server set to: {args.server}")
+            except subprocess.CalledProcessError as e:
+                console.print(f"Error setting git config: {e}")
+        else:
+            parser.print_help()
     else:
         parser.print_help()

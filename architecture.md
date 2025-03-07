@@ -1,3 +1,5 @@
+# Notes & Introduction
+
 This goes over what parts fall back to git and what parts need other implementation
 Let's go over all the functions
 
@@ -132,7 +134,7 @@ change within the project between different credentials such as staging/producti
 Config controls:
 
  * Where the default server is for projects
- * encryption method
+ * encryption method - this should default to ~/.ssh/id_(whatever)
 
 ## init
 ## log
@@ -141,4 +143,51 @@ Config controls:
 ## merge
 ## push
 ## commit
+
+### Auto-secret rewriter
+
+So this is a git hook that prevents secrets from going up as a built-in linter. But it Does Not scold the user instead it does something like this:
+
+    + Checking commit
+    |
+    X You included a secret, probably. Here's the line:
+    | 
+    | db = db.connect(server, key=123123123123)
+    |
+    +- Here's a few options --
+       ( nblx the key )
+       ( this isn't a secret / I don't care! Add # nblx-go-away to the line )
+
+First one needs a demo
+
+    + nblxing the key, here's a suggested name.
+    | Feel free to edit it or press enter to accept.
+    | Clear it out to abort
+    | 
+    | [ DB_SERVER            ]
+    | 
+    + Ok Here's the code now:
+    | db = db.connect(server, key=DB_SERVER)
+    |
+    | ( continue with commit )
+    | ( abort all of this    )
+    +
+
+On abort:
+
+    + No problem. You can make these warnings never appear
+    | with one of the following:
+    |
+    | git config nblx.block_commit=no
+    |
+    + this will just edit the local configuration
+    | just do that with a -g option to never get blocked
+    |
+    | Notes: 
+    |
+    | * I'll still warn you, you can just ignore them.  
+    |
+    | * This isn't a convenience option. You should only
+    |   use it if nblx is really broken
+    +-
 

@@ -10,13 +10,16 @@ Invite someone to the particular
 
 ## login
 Set your credentials
+These should be handled like git
 
 ## reject [ ident ]
 Reject an invite
+This is recorded somewhere
 
 ## request [ ident ]
 Request to be part of a team
 risk: there's spamming that needs to be prevented
+This is recorded somewhere
 
 ## members (should have an alias to request(s) and invite(s))
 Have a list of current members / invites
@@ -100,6 +103,28 @@ and derive the format from that.
 # actually git 
 This is a fancy tricked out repo with git hooks
 
+The flow is debatable. The git workflow has two ways to start
+ * init - set up empty scaffolding
+ * clone - get existing data and scaffloding 
+
+"Easier" here is two possibilities:
+
+ * closer to git workflow
+ * conceptually less abstract
+
+So there is the assumption the person is already familiar with the git workflow
+This entire system is "git but also, not git"
+
+The confusion in a product is from 
+ * when it presents itself as taking responsibility that it doesn't or
+ * suggesting a mode of operation that isn't correct. 
+
+For instance, I was dealing with MCP. I thought it could be used as an interceptor in the regular agentic flow as opposed to a tool calling mechanism.
+
+This was both. I was looking for a way to call it *as part of the flow* like a proxy and being perplexed why there was no documentation on it. LLMs were confused as well (but that's to be expected).
+
+These are solved by presentation, communication, and design. Introducing new porcelein comamnds can be taken as weighty ... potentially heavy concepts with confusing consequences. We need to avoid that.
+
 ## checkout - switch
 change within the project between different credentials such as staging/production
 
@@ -116,3 +141,4 @@ Config controls:
 ## merge
 ## push
 ## commit
+
